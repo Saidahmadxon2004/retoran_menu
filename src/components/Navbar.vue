@@ -1,5 +1,6 @@
 <template>
   <nav class="fixed bottom-0 left-0 right-0 bg-gray-800 text-white flex justify-around py-2 shadow-inner z-50">
+    <!-- Menu -->
     <RouterLink
       to="/"
       class="flex flex-col items-center text-xs"
@@ -9,6 +10,7 @@
       <span>Menu</span>
     </RouterLink>
 
+    <!-- Savat -->
     <RouterLink
       to="/cart"
       class="flex flex-col items-center text-xs relative"
@@ -26,6 +28,7 @@
       <span>Savat</span>
     </RouterLink>
 
+    <!-- Buyurtmalar -->
     <RouterLink
       to="/ordersHistory"
       class="flex flex-col items-center text-xs"
@@ -38,14 +41,15 @@
 </template>
 
 <script>
-import { useCartStore } from '../stores/cart';
+import { useCartStore } from '../stores/cart'
 
 export default {
   name: 'Navbar',
   setup() {
-    return { cartStore: useCartStore() };
+    const cartStore = useCartStore()
+    return { cartStore }
   },
-};
+}
 </script>
 
 <style scoped>

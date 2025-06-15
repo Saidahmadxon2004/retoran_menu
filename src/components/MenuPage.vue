@@ -2,7 +2,7 @@
   <div class="bg-gray-900 min-h-screen text-white p-4 pb-20">
     <h1 class="text-2xl font-bold mb-4">🍽 Menyu</h1>
 
-    <!-- Foydalanuvchi ma'lumotlari -->
+    <!-- Foydalanuvchi holati -->
     <div v-if="cartStore.user" class="mb-4">
       <p>Xush kelibsiz, {{ cartStore.user.name }}!</p>
       <p v-if="cartStore.orderSuccess" class="text-green-500">
@@ -14,8 +14,8 @@
 
     <!-- Telegram login -->
     <div v-else>
-      <p>Ro‘yxatdan o‘tish uchun Telegram orqali kiring:</p>
-      <div id="telegram-login-tastybot"></div>
+      <p>Telegram orqali tizimga kiring:</p>
+      <div id="telegram-login-widget"></div>
     </div>
 
     <!-- Qidiruv -->
@@ -26,10 +26,10 @@
         placeholder="Qidiruv..."
         class="flex-1 p-2 rounded-lg bg-gray-800 text-white placeholder-gray-400"
       />
-      <button @click="fetchMenu" class="bg-orange-500 p-2 rounded-lg">🔍</button>
+      <button @click="fetchMenu" class="bg-orange-500 px-4 py-2 rounded-lg">🔍</button>
     </div>
 
-    <!-- Kategoriya tugmalari -->
+    <!-- Kategoriyalar -->
     <div v-if="cartStore.user" class="flex gap-2 mb-4 overflow-x-auto pb-1">
       <button
         v-for="category in categories"
@@ -57,7 +57,7 @@
       </button>
     </div>
 
-    <!-- Menu kartalari -->
+    <!-- Menyu kartalari -->
     <div v-if="cartStore.user" class="grid grid-cols-2 gap-4">
       <div
         v-for="item in filteredMenu"
@@ -79,9 +79,7 @@
         <div class="text-sm font-medium line-clamp-1">{{ item.name }}</div>
         <div class="flex items-center justify-between mt-1">
           <div>
-            <p v-if="item.discount" class="text-xs text-gray-400 line-through">
-              {{ item.price }} UZS
-            </p>
+            <p v-if="item.discount" class="text-xs text-gray-400 line-through">{{ item.price }} UZS</p>
             <p class="text-orange-500 font-medium">
               {{ item.discount ? Math.round(item.price * (1 - item.discount / 100)) : item.price }} UZS
             </p>
@@ -99,11 +97,15 @@
 </template>
 
 <script>
-import axios from 'axios';
-import { useCartStore } from '../stores/cart';
+import axios from 'axios'
+import { useCartStore } from '../stores/cart'
 
 export default {
   name: 'MenuPage',
+  setup() {
+    const cartStore = useCartStore()
+    return { cartStore }
+  },
   data() {
     return {
       menu: [],
@@ -117,92 +119,87 @@ export default {
         food: 'Taomlar',
         drink: 'Ichimliklar',
       },
-    };
-  },
-  setup() {
-    return { cartStore: useCartStore() };
+    }
   },
   computed: {
     filteredMenu() {
-      let filtered = this.menu;
+      let filtered = this.menu
       if (this.search) {
-        filtered = filtered.filter((item) =>
+        filtered = filtered.filter(item =>
           item.name.toLowerCase().includes(this.search.toLowerCase())
-        );
+        )
       }
       if (this.activeCategory !== 'Barchasi') {
-        filtered = filtered.filter((item) => item.category === this.activeCategory);
+        filtered = filtered.filter(item => item.category === this.activeCategory)
       }
-      return filtered;
+      return filtered
     },
   },
   mounted() {
-    this.fetchMenu();
-    const urlParams = new URLSearchParams(window.location.search);
-    const telegramId = urlParams.get('telegram_id');
+    this.fetchMenu()
+
+    const urlParams = new URLSearchParams(window.location.search)
+    const telegramId = urlParams.get('telegram_id')
+
     if (telegramId && !this.cartStore.user) {
-      this.checkTelegramAuth(telegramId);
+      this.checkTelegramAuth(telegramId)
     }
+
     if (window.location.search.includes('order_success')) {
-      this.cartStore.orderSuccess = true;
+      this.cartStore.orderSuccess = true
     }
-    this.setupTelegramLogin();
+
+    this.setupTelegramLogin()
   },
   methods: {
     async fetchMenu() {
       try {
-        const response = await axios.get(`${this.apiUrl}/api/menu`, {
-          withCredentials: true,
-        });
-        this.menu = response.data;
-        this.categories = [...new Set(this.menu.map((item) => item.category))];
-      } catch (error) {
-        console.error('Menyuni yuklashda xatolik:', error);
+        const res = await axios.get(`${this.apiUrl}/api/menu`, { withCredentials: true })
+        this.menu = res.data
+        this.categories = [...new Set(this.menu.map(i => i.category))]
+      } catch (err) {
+        console.error('❌ Menyu yuklanmadi:', err)
       }
     },
     async checkTelegramAuth(telegramId) {
       try {
-        const response = await axios.get(`${this.apiUrl}/api/auth/check?telegram_id=${telegramId}`, {
+        const res = await axios.get(`${this.apiUrl}/api/auth/check?telegram_id=${telegramId}`, {
           withCredentials: true,
-        });
-        this.cartStore.setUser(response.data.user);
-        this.fetchMenu();
-      } catch (error) {
-        console.error('Telegram ID tekshiruvida xatolik:', error);
-        this.setupTelegramLogin();
+        })
+        this.cartStore.setUser(res.data.user)
+        this.fetchMenu()
+      } catch (err) {
+        console.error('❌ Telegram ID tekshirishda xatolik:', err)
+        this.setupTelegramLogin()
       }
     },
     setupTelegramLogin() {
-      if (!window.Telegram) return;
-      const script = document.createElement('script');
-      script.src = 'https://telegram.org/js/telegram-widget.js?22';
-      script.setAttribute('data-telegram-login', this.botUsername.replace('@', ''));
-      script.setAttribute('data-size', 'large');
-      script.setAttribute('data-onauth', 'onTelegramAuth(user)');
-      script.setAttribute('data-request-access', 'write');
-      document.getElementById('telegram-login-tastybot').appendChild(script);
+      if (!window.Telegram) return
+      const script = document.createElement('script')
+      script.src = 'https://telegram.org/js/telegram-widget.js?22'
+      script.setAttribute('data-telegram-login', this.botUsername.replace('@', ''))
+      script.setAttribute('data-size', 'large')
+      script.setAttribute('data-onauth', 'onTelegramAuth(user)')
+      script.setAttribute('data-request-access', 'write')
+      document.getElementById('telegram-login-widget').appendChild(script)
 
       window.onTelegramAuth = async (user) => {
         try {
-          const response = await axios.post(
-            `${this.apiUrl}/api/auth`,
-            { user },
-            { withCredentials: true }
-          );
-          this.cartStore.setUser(response.data.user);
-          this.fetchMenu();
-        } catch (error) {
-          console.error('Telegram autentifikatsiyasida xatolik:', error);
+          const res = await axios.post(`${this.apiUrl}/api/auth`, { user }, { withCredentials: true })
+          this.cartStore.setUser(res.data.user)
+          this.fetchMenu()
+        } catch (err) {
+          console.error('❌ Telegram login xatosi:', err)
         }
-      };
+      }
     },
     goToDetail(item) {
-      this.$router.push({ name: 'ItemDetail', params: { id: item.id } });
+      this.$router.push({ name: 'ItemDetail', params: { id: item.id } })
     },
     logout() {
-      this.cartStore.clearUser();
-      axios.post(`${this.apiUrl}/api/logout`, {}, { withCredentials: true });
+      this.cartStore.clearUser()
+      axios.post(`${this.apiUrl}/api/logout`, {}, { withCredentials: true })
     },
   },
-};
+}
 </script>
