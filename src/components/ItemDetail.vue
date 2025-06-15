@@ -48,8 +48,8 @@ export default {
   data() {
     return {
       item: null,
-      botToken: import.meta.env.VITE_BOT_TOKEN || 'YOUR_BOT_TOKEN',
-      apiUrl: import.meta.env.VITE_API_URL || 'http://localhost:8000',
+      botToken: import.meta.env.VITE_BOT_TOKEN ,
+      apiUrl:' https://restoran-backend.onrender.com',
     }
   },
   async mounted() {

@@ -114,7 +114,7 @@ export default {
       categories: [],
       botToken: import.meta.env.VITE_BOT_TOKEN,
       botUsername: import.meta.env.VITE_BOT_USERNAME,
-      apiUrl: import.meta.env.VITE_API_URL,
+      apiUrl: 'https://restoran-backend.onrender.com',
       categoryNames: {
         food: 'Taomlar',
         drink: 'Ichimliklar',
@@ -154,7 +154,7 @@ export default {
   methods: {
     async fetchMenu() {
       try {
-        const res = await axios.get(`${this.apiUrl}/api/menu`, { withCredentials: true })
+        const res = await axios.get(`$https://restoran-backend.onrender.com/api/menu`, { withCredentials: true })
         this.menu = res.data
         this.categories = [...new Set(this.menu.map(i => i.category))]
       } catch (err) {
@@ -163,7 +163,7 @@ export default {
     },
     async checkTelegramAuth(telegramId) {
       try {
-        const res = await axios.get(`${this.apiUrl}/api/auth/check?telegram_id=${telegramId}`, {
+        const res = await axios.get(`https://restoran-backend.onrender.com/api/auth/check?telegram_id=${telegramId}`, {
           withCredentials: true,
         })
         this.cartStore.setUser(res.data.user)
@@ -185,7 +185,7 @@ export default {
 
       window.onTelegramAuth = async (user) => {
         try {
-          const res = await axios.post(`${this.apiUrl}/api/auth`, { user }, { withCredentials: true })
+          const res = await axios.post(`https://restoran-backend.onrender.com/api/auth`, { user }, { withCredentials: true })
           this.cartStore.setUser(res.data.user)
           this.fetchMenu()
         } catch (err) {
@@ -198,7 +198,7 @@ export default {
     },
     logout() {
       this.cartStore.clearUser()
-      axios.post(`${this.apiUrl}/api/logout`, {}, { withCredentials: true })
+      axios.post(`https://restoran-backend.onrender.com/api/logout`, {}, { withCredentials: true })
     },
   },
 }
