@@ -39,7 +39,7 @@ export const useCartStore = defineStore('cart', {
       }
       try {
         for (const item of this.cart) {
-          await axios.post('http://localhost:8000/api/orders', {
+          await axios.post('https://restoran-backend.onrender.com/api/orders', {
             user_id: this.user.telegram_id,
             item_id: item.id,
             quantity: item.quantity,
