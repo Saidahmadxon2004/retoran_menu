@@ -154,7 +154,8 @@ export default {
   methods: {
     async fetchMenu() {
       try {
-        const res = await axios.get(`$https://restoran-backend.onrender.com/api/menu`, { withCredentials: true })
+        const res = await axios.get(`https://restoran-backend.onrender.com/api/menu`, { withCredentials: true })
+        console.log(res)
         this.menu = res.data
         this.categories = [...new Set(this.menu.map(i => i.category))]
       } catch (err) {
