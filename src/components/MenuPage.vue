@@ -12,7 +12,7 @@
 
     <!-- Foydalanuvchi holati -->
     <div v-if="cartStore.user" class="mb-6 bg-gray-800 rounded-xl p-4 shadow-lg">
-      <p class="text-lg font-semibold">Xush kelibsiz, {{ cartStore.user.name }}!</p>
+      <p class="text-lg font-semibold">Xush kelibsiz, {{ displayName }}!</p>
       <p v-if="cartStore.orderSuccess" class="text-green-400 mt-2 flex items-center">
         <span class="mr-2">✅</span> Buyurtma qabul qilindi!
         <a :href="`https://t.me/${botUsername}?start=order_success`" class="text-orange-400 underline ml-2 hover:text-orange-500">
@@ -42,9 +42,9 @@
           v-model="search"
           type="text"
           placeholder="Taom qidirish..."
-          class="flex-1 p-3 rounded-lg bg-gray-700 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-400 transition"
+          class="flex-1 p-3 rounded-lg bg-gray-700 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-400 transition-all duration-200"
         />
-        <button @click="fetchMenu" class="bg-orange-400 text-white px-4 py-3 rounded-lg hover:bg-orange-500 transition">
+        <button @click="fetchMenu" class="bg-orange-400 text-white px-4 py-3 rounded-lg hover:bg-orange-500 transition-all duration-200">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
@@ -52,7 +52,7 @@
       </div>
 
       <!-- Kategoriyalar -->
-      <div class="flex gap-3 overflow-x-auto pb-2 scrollbar-hidden">
+      <div class="flex gap-2 overflow-x-auto pb-2 scrollbar-hidden md:grid md:grid-cols-4 md:gap-2">
         <button
           v-for="category in categories"
           :key="category"
@@ -85,7 +85,7 @@
       <div
         v-for="item in filteredMenu"
         :key="item.id"
-        class="bg-gray-800 rounded-xl p-3 shadow-md hover:shadow-xl transition-all cursor-pointer"
+        class="bg-gray-800 rounded-xl p-3 shadow-md hover:shadow-xl transition-all duration-200 cursor-pointer"
         @click="goToDetail(item)"
       >
         <div
@@ -108,7 +108,7 @@
             </p>
           </div>
           <button
-            class="bg-orange-400 text-white rounded-full w-8 h-8 flex items-center justify-center hover:bg-orange-500 transition"
+            class="bg-orange-400 text-white rounded-full w-8 h-8 flex items-center justify-center hover:bg-orange-500 transition-all duration-200"
             @click.stop="cartStore.addToCart(item)"
           >
             +
@@ -157,6 +157,10 @@ export default {
       }
       return filtered
     },
+    displayName() {
+      const name = this.cartStore.user?.name || 'Noma\'lum'
+      return name.length > 20 ? name.substring(0, 20) + '...' : name
+    },
   },
   async mounted() {
     await this.checkAuth()
@@ -166,6 +170,10 @@ export default {
     const telegramId = urlParams.get('telegram_id')
     if (telegramId && !this.cartStore.user) {
       await this.handleTelegramRedirect(telegramId)
+      localStorage.setItem('telegram_id', telegramId)
+      window.history.pushState({}, document.title, window.location.pathname)
+    } else if (localStorage.getItem('telegram_id')) {
+      await this.checkAuthWithStoredId()
     }
 
     if (window.location.search.includes('order_success')) {
@@ -173,6 +181,7 @@ export default {
       setTimeout(() => {
         this.cartStore.orderSuccess = false
       }, 5000)
+      window.history.pushState({}, document.title, window.location.pathname)
     }
   },
   methods: {
@@ -195,6 +204,7 @@ export default {
         this.authError = 'Menyu yuklanmadi, iltimos qayta kiring.'
         if (err.response?.status === 401) {
           localStorage.removeItem('jwt_token')
+          localStorage.removeItem('telegram_id')
           this.cartStore.clearUser()
         }
       }
@@ -215,8 +225,30 @@ export default {
       } catch (err) {
         console.error('❌ Auth tekshirishda xatolik:', err.response?.data || err.message)
         localStorage.removeItem('jwt_token')
+        localStorage.removeItem('telegram_id')
         this.cartStore.clearUser()
         this.authError = 'Sessiya muddati tugadi, iltimos qayta kiring.'
+      }
+    },
+    async checkAuthWithStoredId() {
+      try {
+        const storedId = localStorage.getItem('telegram_id')
+        if (storedId) {
+          const res = await axios.post(`${this.apiUrl}/telegram-auth`, {
+            id: storedId,
+            first_name: 'StoredUser'
+          })
+          if (res.data.success) {
+            localStorage.setItem('jwt_token', res.data.token)
+            this.cartStore.setUser(res.data.user)
+            await this.fetchMenu()
+            this.authError = ''
+          }
+        }
+      } catch (err) {
+        console.error('❌ Stored ID bilan autentifikatsiya xatosi:', err.response?.data || err.message)
+        localStorage.removeItem('telegram_id')
+        this.authError = 'Saqlangan sessiya muddati tugadi, qayta kiring.'
       }
     },
     async handleTelegramRedirect(telegramId) {
@@ -227,6 +259,7 @@ export default {
         })
         if (res.data.success) {
           localStorage.setItem('jwt_token', res.data.token)
+          localStorage.setItem('telegram_id', telegramId)
           this.cartStore.setUser(res.data.user)
           await this.fetchMenu()
           this.authError = ''
@@ -260,6 +293,7 @@ export default {
           const res = await axios.post(`${this.apiUrl}/telegram-auth`, user)
           if (res.data.success) {
             localStorage.setItem('jwt_token', res.data.token)
+            localStorage.setItem('telegram_id', user.id)
             this.cartStore.setUser(res.data.user)
             await this.fetchMenu()
             this.authError = ''
@@ -280,6 +314,7 @@ export default {
       try {
         await axios.post(`${this.apiUrl}/logout`)
         localStorage.removeItem('jwt_token')
+        localStorage.removeItem('telegram_id')
         this.cartStore.clearUser()
         this.menu = []
         this.categories = []
