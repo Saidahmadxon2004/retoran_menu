@@ -9,13 +9,20 @@
         ✅ Buyurtma qabul qilindi!
         <a :href="`https://t.me/${botUsername}?start=order_success`" class="text-orange-500 underline">Botga qaytish</a>
       </p>
-      <button @click="logout" class="text-orange-500">Chiqish</button>
+      <button @click="logout" class="text-orange-500 hover:underline">Chiqish</button>
     </div>
 
     <!-- Telegram login -->
-    <div v-else>
-      <p>Telegram orqali tizimga kiring:</p>
-      <div id="telegram-login-widget"></div>
+    <div v-else class="text-center">
+      <p class="mb-2">Telegram orqali tizimga kiring:</p>
+      <div id="telegram-login-widget" class="inline-block"></div>
+      <p v-if="authError" class="text-red-500 mt-2">{{ authError }}</p>
+      <a
+        :href="`https://t.me/${botUsername}?start=menu`"
+        class="bg-orange-500 text-white px-4 py-2 rounded-lg inline-block mt-4"
+      >
+        @{{ botUsername }} orqali kirish
+      </a>
     </div>
 
     <!-- Qidiruv -->
@@ -24,7 +31,7 @@
         v-model="search"
         type="text"
         placeholder="Qidiruv..."
-        class="flex-1 p-2 rounded-lg bg-gray-800 text-white placeholder-gray-400"
+        class="flex-1 p-2 rounded-lg bg-gray-800 text-white placeholder-gray-400 focus:outline-none"
       />
       <button @click="fetchMenu" class="bg-orange-500 px-4 py-2 rounded-lg">🔍</button>
     </div>
@@ -39,7 +46,7 @@
           'px-4 py-2 rounded-full text-sm font-medium transition-all',
           activeCategory === category
             ? 'bg-gradient-to-r from-orange-400 to-pink-500 text-white'
-            : 'bg-gray-800 text-gray-300',
+            : 'bg-gray-800 text-gray-300 hover:bg-gray-700',
         ]"
       >
         {{ categoryNames[category] || category }}
@@ -50,7 +57,7 @@
           'px-4 py-2 rounded-full text-sm font-medium transition-all',
           activeCategory === 'Barchasi'
             ? 'bg-gradient-to-r from-orange-400 to-pink-500 text-white'
-            : 'bg-gray-800 text-gray-300',
+            : 'bg-gray-800 text-gray-300 hover:bg-gray-700',
         ]"
       >
         Barchasi
@@ -62,7 +69,7 @@
       <div
         v-for="item in filteredMenu"
         :key="item.id"
-        class="bg-gray-800 rounded-xl p-2 relative hover:scale-[1.02] transition-transform"
+        class="bg-gray-800 rounded-xl p-2 relative hover:scale-[1.02] transition-transform cursor-pointer"
         @click="goToDetail(item)"
       >
         <div
@@ -112,9 +119,9 @@ export default {
       search: '',
       activeCategory: 'Barchasi',
       categories: [],
-      botToken: import.meta.env.VITE_BOT_TOKEN,
-      botUsername: import.meta.env.VITE_BOT_USERNAME,
+      botUsername: import.meta.env.VITE_BOT_USERNAME || '@taom_buyurtma_bot',
       apiUrl: import.meta.env.VITE_API_URL || 'https://restoran-backend.onrender.com',
+      authError: '',
       categoryNames: {
         food: '🍲 Taomlar',
         drink: '🥤 Ichimliklar',
@@ -147,50 +154,71 @@ export default {
 
     if (window.location.search.includes('order_success')) {
       this.cartStore.orderSuccess = true
+      setTimeout(() => {
+        this.cartStore.orderSuccess = false
+      }, 5000)
     }
   },
   methods: {
     async fetchMenu() {
       try {
-        const res = await axios.get(`${this.apiUrl}/api/menu`, { withCredentials: true })
+        const token = localStorage.getItem('jwt_token')
+        if (!token) throw new Error('Token topilmadi')
+        const res = await axios.get(`${this.apiUrl}/api/menu`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
         this.menu = res.data
         this.categories = [...new Set(this.menu.map(i => i.category))]
         console.log('✅ Menyu yuklandi:', res.data)
       } catch (err) {
         console.error('❌ Menyu yuklanmadi:', err)
+        this.authError = 'Menyu yuklanmadi, iltimos qayta kiring.'
       }
     },
     async checkAuth() {
       try {
-        const res = await axios.get(`${this.apiUrl}/api/auth/check`, { withCredentials: true })
+        const token = localStorage.getItem('jwt_token')
+        if (!token) {
+          console.log('ℹ️ Token topilmadi, autentifikatsiya talab qilinadi')
+          return
+        }
+        const res = await axios.get(`${this.apiUrl}/api/auth/check`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
         this.cartStore.setUser(res.data.user)
         this.fetchMenu()
         console.log('✅ Auth tekshirildi:', res.data.user)
       } catch (err) {
         console.error('❌ Auth tekshirishda xatolik:', err)
+        localStorage.removeItem('jwt_token')
         this.cartStore.clearUser()
+        this.authError = 'Tizimga kirishda xatolik, iltimos qayta kiring.'
       }
     },
     async handleTelegramRedirect(telegramId) {
       try {
-        const res = await axios.post(
-          `${this.apiUrl}/telegram-auth`,
-          { id: telegramId, first_name: 'Unknown' }, // Placeholder data
-          { withCredentials: true }
-        )
+        const res = await axios.post(`${this.apiUrl}/telegram-auth`, {
+          id: telegramId,
+          first_name: 'Unknown'
+        })
         if (res.data.success) {
+          localStorage.setItem('jwt_token', res.data.token)
           this.cartStore.setUser(res.data.user)
           this.fetchMenu()
+          this.authError = ''
           console.log('✅ Telegram redirect autentifikatsiyasi muvaffaqiyatli:', res.data.user)
+        } else {
+          this.authError = res.data.message || 'Telegram autentifikatsiyasi muvaffaqiyatsiz.'
         }
       } catch (err) {
         console.error('❌ Telegram redirect xatosi:', err)
-        this.setupTelegramLogin()
+        this.authError = 'Telegram orqali kirishda xatolik, botdan foydalaning.'
       }
     },
     setupTelegramLogin() {
       if (!window.Telegram) {
         console.error('❌ Telegram SDK yuklanmadi')
+        this.authError = 'Telegram SDK yuklanmadi, bot orqali kiring.'
         return
       }
       const script = document.createElement('script')
@@ -204,14 +232,20 @@ export default {
 
       window.onTelegramAuth = async (user) => {
         try {
-          const res = await axios.post(`${this.apiUrl}/telegram-auth`, user, { withCredentials: true })
+          console.log('Telegram user data:', user)
+          const res = await axios.post(`${this.apiUrl}/telegram-auth`, user)
           if (res.data.success) {
+            localStorage.setItem('jwt_token', res.data.token)
             this.cartStore.setUser(res.data.user)
             this.fetchMenu()
+            this.authError = ''
             console.log('✅ Telegram login muvaffaqiyatli:', res.data.user)
+          } else {
+            this.authError = res.data.message || 'Telegram autentifikatsiyasi muvaffaqiyatsiz.'
           }
         } catch (err) {
           console.error('❌ Telegram login xatosi:', err)
+          this.authError = 'Telegram orqali kirishda xatolik, botdan foydalaning.'
         }
       }
     },
@@ -220,11 +254,16 @@ export default {
     },
     async logout() {
       try {
-        await axios.post(`${this.apiUrl}/logout`, {}, { withCredentials: true })
+        await axios.post(`${this.apiUrl}/logout`)
+        localStorage.removeItem('jwt_token')
         this.cartStore.clearUser()
+        this.menu = []
+        this.categories = []
+        this.authError = ''
         console.log('✅ Sessiya yopildi')
       } catch (err) {
         console.error('❌ Chiqishda xatolik:', err)
+        this.authError = 'Chiqishda xatolik yuz berdi.'
       }
     },
   },
