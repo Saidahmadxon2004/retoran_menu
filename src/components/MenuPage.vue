@@ -112,8 +112,8 @@ export default {
       search: '',
       activeCategory: 'Barchasi',
       categories: [],
-      botToken: import.meta.env.VITE_BOT_TOKEN,
-      botUsername: import.meta.env.VITE_BOT_USERNAME,
+      botToken: '8193733999:AAG4OP79grKc9XbJ8j0mwXl7H4oe9Z2PYl0',
+      botUsername: '@taom_buyurtma_bot',
       apiUrl: 'https://restoran-backend.onrender.com',
       categoryNames: {
         food: 'Taomlar',

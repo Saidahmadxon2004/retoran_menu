@@ -48,7 +48,7 @@ export default {
   data() {
     return {
       item: null,
-      botToken: import.meta.env.VITE_BOT_TOKEN ,
+      botToken: '8193733999:AAG4OP79grKc9XbJ8j0mwXl7H4oe9Z2PYl0' ,
       apiUrl:' https://restoran-backend.onrender.com',
     }
   },
