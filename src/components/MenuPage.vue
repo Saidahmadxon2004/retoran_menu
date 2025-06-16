@@ -140,6 +140,7 @@ export default {
 
     const urlParams = new URLSearchParams(window.location.search)
     const telegramId = urlParams.get('telegram_id')
+    console.log(telegramId)
 
     if (telegramId && !this.cartStore.user) {
       this.checkTelegramAuth(telegramId)
