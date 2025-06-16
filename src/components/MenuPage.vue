@@ -1,98 +1,114 @@
 <template>
-  <div class="bg-gray-900 min-h-screen text-white p-4 pb-20">
-    <h1 class="text-2xl font-bold mb-4">🍽 Menyu</h1>
+  <div class="min-h-screen bg-gradient-to-b from-gray-900 to-gray-800 text-white px-4 py-6">
+    <!-- Header -->
+    <header class="flex justify-between items-center mb-6">
+      <h1 class="text-3xl font-extrabold tracking-tight flex items-center">
+        <span class="mr-2">🍽</span> Menyu
+      </h1>
+      <button v-if="cartStore.user" @click="logout" class="text-orange-400 hover:text-orange-500 font-medium transition">
+        Chiqish
+      </button>
+    </header>
 
     <!-- Foydalanuvchi holati -->
-    <div v-if="cartStore.user" class="mb-4">
-      <p>Xush kelibsiz, {{ cartStore.user.name }}!</p>
-      <p v-if="cartStore.orderSuccess" class="text-green-500">
-        ✅ Buyurtma qabul qilindi!
-        <a :href="`https://t.me/${botUsername}?start=order_success`" class="text-orange-500 underline">Botga qaytish</a>
+    <div v-if="cartStore.user" class="mb-6 bg-gray-800 rounded-xl p-4 shadow-lg">
+      <p class="text-lg font-semibold">Xush kelibsiz, {{ cartStore.user.name }}!</p>
+      <p v-if="cartStore.orderSuccess" class="text-green-400 mt-2 flex items-center">
+        <span class="mr-2">✅</span> Buyurtma qabul qilindi!
+        <a :href="`https://t.me/${botUsername}?start=order_success`" class="text-orange-400 underline ml-2 hover:text-orange-500">
+          Botga qaytish
+        </a>
       </p>
-      <button @click="logout" class="text-orange-500 hover:underline">Chiqish</button>
     </div>
 
     <!-- Telegram login -->
-    <div v-else class="text-center">
-      <p class="mb-2">Telegram orqali tizimga kiring:</p>
-      <div id="telegram-login-widget" class="inline-block"></div>
-      <p v-if="authError" class="text-red-500 mt-2">{{ authError }}</p>
+    <div v-else class="text-center py-12">
+      <p class="text-xl mb-4 font-medium">Telegram orqali tizimga kiring</p>
+      <div id="telegram-login-widget" class="inline-block mb-4"></div>
+      <p v-if="authError" class="text-red-400 mb-4">{{ authError }}</p>
       <a
         :href="`https://t.me/${botUsername}?start=menu`"
-        class="bg-orange-500 text-white px-4 py-2 rounded-lg inline-block mt-4"
+        class="bg-gradient-to-r from-orange-400 to-pink-500 text-white px-6 py-3 rounded-full font-semibold hover:shadow-xl transition-shadow"
       >
         @{{ botUsername }} orqali kirish
       </a>
     </div>
 
-    <!-- Qidiruv -->
-    <div v-if="cartStore.user" class="flex items-center gap-2 mb-4">
-      <input
-        v-model="search"
-        type="text"
-        placeholder="Qidiruv..."
-        class="flex-1 p-2 rounded-lg bg-gray-800 text-white placeholder-gray-400 focus:outline-none"
-      />
-      <button @click="fetchMenu" class="bg-orange-500 px-4 py-2 rounded-lg">🔍</button>
-    </div>
+    <!-- Qidiruv va kategoriyalar -->
+    <div v-if="cartStore.user" class="space-y-4">
+      <!-- Qidiruv -->
+      <div class="flex items-center gap-3">
+        <input
+          v-model="search"
+          type="text"
+          placeholder="Taom qidirish..."
+          class="flex-1 p-3 rounded-lg bg-gray-700 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-400 transition"
+        />
+        <button @click="fetchMenu" class="bg-orange-400 text-white px-4 py-3 rounded-lg hover:bg-orange-500 transition">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+        </button>
+      </div>
 
-    <!-- Kategoriyalar -->
-    <div v-if="cartStore.user" class="flex gap-2 mb-4 overflow-x-auto pb-1">
-      <button
-        v-for="category in categories"
-        :key="category"
-        @click="activeCategory = category"
-        :class="[
-          'px-4 py-2 rounded-full text-sm font-medium transition-all',
-          activeCategory === category
-            ? 'bg-gradient-to-r from-orange-400 to-pink-500 text-white'
-            : 'bg-gray-800 text-gray-300 hover:bg-gray-700',
-        ]"
-      >
-        {{ categoryNames[category] || category }}
-      </button>
-      <button
-        @click="activeCategory = 'Barchasi'"
-        :class="[
-          'px-4 py-2 rounded-full text-sm font-medium transition-all',
-          activeCategory === 'Barchasi'
-            ? 'bg-gradient-to-r from-orange-400 to-pink-500 text-white'
-            : 'bg-gray-800 text-gray-300 hover:bg-gray-700',
-        ]"
-      >
-        Barchasi
-      </button>
+      <!-- Kategoriyalar -->
+      <div class="flex gap-3 overflow-x-auto pb-2 scrollbar-hidden">
+        <button
+          v-for="category in categories"
+          :key="category"
+          @click="activeCategory = category"
+          :class="[
+            'px-4 py-2 rounded-full text-sm font-semibold transition-all flex-shrink-0',
+            activeCategory === category
+              ? 'bg-gradient-to-r from-orange-400 to-pink-500 text-white'
+              : 'bg-gray-700 text-gray-300 hover:bg-gray-600',
+          ]"
+        >
+          {{ categoryNames[category] || category }}
+        </button>
+        <button
+          @click="activeCategory = 'Barchasi'"
+          :class="[
+            'px-4 py-2 rounded-full text-sm font-semibold transition-all flex-shrink-0',
+            activeCategory === 'Barchasi'
+              ? 'bg-gradient-to-r from-orange-400 to-pink-500 text-white'
+              : 'bg-gray-700 text-gray-300 hover:bg-gray-600',
+          ]"
+        >
+          Barchasi
+        </button>
+      </div>
     </div>
 
     <!-- Menyu kartalari -->
-    <div v-if="cartStore.user" class="grid grid-cols-2 gap-4">
+    <div v-if="cartStore.user" class="grid grid-cols-2 gap-4 mt-6 sm:grid-cols-3 md:grid-cols-4">
       <div
         v-for="item in filteredMenu"
         :key="item.id"
-        class="bg-gray-800 rounded-xl p-2 relative hover:scale-[1.02] transition-transform cursor-pointer"
+        class="bg-gray-800 rounded-xl p-3 shadow-md hover:shadow-xl transition-all cursor-pointer"
         @click="goToDetail(item)"
       >
         <div
           v-if="item.discount"
-          class="absolute top-2 left-2 bg-yellow-500 text-white text-xs px-2 py-1 rounded-full z-10"
+          class="absolute top-2 left-2 bg-yellow-400 text-gray-900 text-xs font-bold px-2 py-1 rounded-full"
         >
           -{{ item.discount }}%
         </div>
         <img
           :src="item.photo_id ? `${apiUrl}/static/${item.photo_id}` : 'https://via.placeholder.com/150'"
           :alt="item.name"
-          class="w-full h-24 object-cover rounded-lg mb-2"
+          class="w-full h-32 object-cover rounded-lg mb-3"
         />
-        <div class="text-sm font-medium line-clamp-1">{{ item.name }}</div>
-        <div class="flex items-center justify-between mt-1">
+        <h3 class="text-sm font-semibold line-clamp-1">{{ item.name }}</h3>
+        <div class="flex items-center justify-between mt-2">
           <div>
             <p v-if="item.discount" class="text-xs text-gray-400 line-through">{{ item.price }} so‘m</p>
-            <p class="text-orange-500 font-medium">
+            <p class="text-orange-400 font-bold">
               {{ item.discount ? Math.round(item.price * (1 - item.discount / 100)) : item.price }} so‘m
             </p>
           </div>
           <button
-            class="bg-orange-500 text-white rounded-full w-8 h-8 flex items-center justify-center"
+            class="bg-orange-400 text-white rounded-full w-8 h-8 flex items-center justify-center hover:bg-orange-500 transition"
             @click.stop="cartStore.addToCart(item)"
           >
             +
@@ -142,14 +158,14 @@ export default {
       return filtered
     },
   },
-  mounted() {
-    this.checkAuth()
+  async mounted() {
+    await this.checkAuth()
     this.setupTelegramLogin()
 
     const urlParams = new URLSearchParams(window.location.search)
     const telegramId = urlParams.get('telegram_id')
     if (telegramId && !this.cartStore.user) {
-      this.handleTelegramRedirect(telegramId)
+      await this.handleTelegramRedirect(telegramId)
     }
 
     if (window.location.search.includes('order_success')) {
@@ -163,16 +179,24 @@ export default {
     async fetchMenu() {
       try {
         const token = localStorage.getItem('jwt_token')
-        if (!token) throw new Error('Token topilmadi')
+        if (!token) {
+          this.authError = 'Tizimga kirish talab qilinadi.'
+          return
+        }
         const res = await axios.get(`${this.apiUrl}/api/menu`, {
           headers: { Authorization: `Bearer ${token}` }
         })
         this.menu = res.data
         this.categories = [...new Set(this.menu.map(i => i.category))]
+        this.authError = ''
         console.log('✅ Menyu yuklandi:', res.data)
       } catch (err) {
-        console.error('❌ Menyu yuklanmadi:', err)
+        console.error('❌ Menyu yuklanmadi:', err.response?.data || err.message)
         this.authError = 'Menyu yuklanmadi, iltimos qayta kiring.'
+        if (err.response?.status === 401) {
+          localStorage.removeItem('jwt_token')
+          this.cartStore.clearUser()
+        }
       }
     },
     async checkAuth() {
@@ -186,13 +210,13 @@ export default {
           headers: { Authorization: `Bearer ${token}` }
         })
         this.cartStore.setUser(res.data.user)
-        this.fetchMenu()
+        await this.fetchMenu()
         console.log('✅ Auth tekshirildi:', res.data.user)
       } catch (err) {
-        console.error('❌ Auth tekshirishda xatolik:', err)
+        console.error('❌ Auth tekshirishda xatolik:', err.response?.data || err.message)
         localStorage.removeItem('jwt_token')
         this.cartStore.clearUser()
-        this.authError = 'Tizimga kirishda xatolik, iltimos qayta kiring.'
+        this.authError = 'Sessiya muddati tugadi, iltimos qayta kiring.'
       }
     },
     async handleTelegramRedirect(telegramId) {
@@ -204,14 +228,14 @@ export default {
         if (res.data.success) {
           localStorage.setItem('jwt_token', res.data.token)
           this.cartStore.setUser(res.data.user)
-          this.fetchMenu()
+          await this.fetchMenu()
           this.authError = ''
           console.log('✅ Telegram redirect autentifikatsiyasi muvaffaqiyatli:', res.data.user)
         } else {
           this.authError = res.data.message || 'Telegram autentifikatsiyasi muvaffaqiyatsiz.'
         }
       } catch (err) {
-        console.error('❌ Telegram redirect xatosi:', err)
+        console.error('❌ Telegram redirect xatosi:', err.response?.data || err.message)
         this.authError = 'Telegram orqali kirishda xatolik, botdan foydalaning.'
       }
     },
@@ -237,14 +261,14 @@ export default {
           if (res.data.success) {
             localStorage.setItem('jwt_token', res.data.token)
             this.cartStore.setUser(res.data.user)
-            this.fetchMenu()
+            await this.fetchMenu()
             this.authError = ''
             console.log('✅ Telegram login muvaffaqiyatli:', res.data.user)
           } else {
             this.authError = res.data.message || 'Telegram autentifikatsiyasi muvaffaqiyatsiz.'
           }
         } catch (err) {
-          console.error('❌ Telegram login xatosi:', err)
+          console.error('❌ Telegram login xatosi:', err.response?.data || err.message)
           this.authError = 'Telegram orqali kirishda xatolik, botdan foydalaning.'
         }
       }
@@ -262,10 +286,21 @@ export default {
         this.authError = ''
         console.log('✅ Sessiya yopildi')
       } catch (err) {
-        console.error('❌ Chiqishda xatolik:', err)
+        console.error('❌ Chiqishda xatolik:', err.response?.data || err.message)
         this.authError = 'Chiqishda xatolik yuz berdi.'
       }
     },
   },
 }
 </script>
+
+<style scoped>
+/* Scrollbar-ni yashirish */
+.scrollbar-hidden::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hidden {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+</style>
