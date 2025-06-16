@@ -72,16 +72,16 @@
           -{{ item.discount }}%
         </div>
         <img
-          :src="item.photo_id ? `https://api.telegram.org/file/bot${botToken}/${item.photo_id}` : 'https://via.placeholder.com/150'"
+          :src="item.photo_id ? `${apiUrl}/static/${item.photo_id}` : 'https://via.placeholder.com/150'"
           :alt="item.name"
           class="w-full h-24 object-cover rounded-lg mb-2"
         />
         <div class="text-sm font-medium line-clamp-1">{{ item.name }}</div>
         <div class="flex items-center justify-between mt-1">
           <div>
-            <p v-if="item.discount" class="text-xs text-gray-400 line-through">{{ item.price }} UZS</p>
+            <p v-if="item.discount" class="text-xs text-gray-400 line-through">{{ item.price }} so‘m</p>
             <p class="text-orange-500 font-medium">
-              {{ item.discount ? Math.round(item.price * (1 - item.discount / 100)) : item.price }} UZS
+              {{ item.discount ? Math.round(item.price * (1 - item.discount / 100)) : item.price }} so‘m
             </p>
           </div>
           <button
@@ -112,12 +112,12 @@ export default {
       search: '',
       activeCategory: 'Barchasi',
       categories: [],
-      botToken: '8193733999:AAG4OP79grKc9XbJ8j0mwXl7H4oe9Z2PYl0',
-      botUsername: '@taom_buyurtma_bot',
-      apiUrl: 'https://restoran-backend.onrender.com',
+      botToken: import.meta.env.VITE_BOT_TOKEN,
+      botUsername: import.meta.env.VITE_BOT_USERNAME,
+      apiUrl: import.meta.env.VITE_API_URL || 'https://restoran-backend.onrender.com',
       categoryNames: {
-        food: 'Taomlar',
-        drink: 'Ichimliklar',
+        food: '🍲 Taomlar',
+        drink: '🥤 Ichimliklar',
       },
     }
   },
@@ -136,49 +136,66 @@ export default {
     },
   },
   mounted() {
-    this.fetchMenu()
+    this.checkAuth()
+    this.setupTelegramLogin()
 
     const urlParams = new URLSearchParams(window.location.search)
     const telegramId = urlParams.get('telegram_id')
-    console.log(telegramId)
-
     if (telegramId && !this.cartStore.user) {
-      this.checkTelegramAuth(telegramId)
+      this.handleTelegramRedirect(telegramId)
     }
 
     if (window.location.search.includes('order_success')) {
       this.cartStore.orderSuccess = true
     }
-
-    this.setupTelegramLogin()
   },
   methods: {
     async fetchMenu() {
       try {
-        const res = await axios.get(`https://restoran-backend.onrender.com/api/menu`, { withCredentials: true })
-        console.log(res)
+        const res = await axios.get(`${this.apiUrl}/api/menu`, { withCredentials: true })
         this.menu = res.data
         this.categories = [...new Set(this.menu.map(i => i.category))]
+        console.log('✅ Menyu yuklandi:', res.data)
       } catch (err) {
         console.error('❌ Menyu yuklanmadi:', err)
       }
     },
-    async checkTelegramAuth(telegramId) {
+    async checkAuth() {
       try {
-        const res = await axios.get(`https://restoran-backend.onrender.com/api/auth/check?telegram_id=${telegramId}`, {
-          withCredentials: true,
-        })
+        const res = await axios.get(`${this.apiUrl}/api/auth/check`, { withCredentials: true })
         this.cartStore.setUser(res.data.user)
         this.fetchMenu()
+        console.log('✅ Auth tekshirildi:', res.data.user)
       } catch (err) {
-        console.error('❌ Telegram ID tekshirishda xatolik:', err)
+        console.error('❌ Auth tekshirishda xatolik:', err)
+        this.cartStore.clearUser()
+      }
+    },
+    async handleTelegramRedirect(telegramId) {
+      try {
+        const res = await axios.post(
+          `${this.apiUrl}/telegram-auth`,
+          { id: telegramId, first_name: 'Unknown' }, // Placeholder data
+          { withCredentials: true }
+        )
+        if (res.data.success) {
+          this.cartStore.setUser(res.data.user)
+          this.fetchMenu()
+          console.log('✅ Telegram redirect autentifikatsiyasi muvaffaqiyatli:', res.data.user)
+        }
+      } catch (err) {
+        console.error('❌ Telegram redirect xatosi:', err)
         this.setupTelegramLogin()
       }
     },
     setupTelegramLogin() {
-      if (!window.Telegram) return
+      if (!window.Telegram) {
+        console.error('❌ Telegram SDK yuklanmadi')
+        return
+      }
       const script = document.createElement('script')
       script.src = 'https://telegram.org/js/telegram-widget.js?22'
+      script.async = true
       script.setAttribute('data-telegram-login', this.botUsername.replace('@', ''))
       script.setAttribute('data-size', 'large')
       script.setAttribute('data-onauth', 'onTelegramAuth(user)')
@@ -187,9 +204,12 @@ export default {
 
       window.onTelegramAuth = async (user) => {
         try {
-          const res = await axios.post(`https://restoran-backend.onrender.com/api/auth`, { user }, { withCredentials: true })
-          this.cartStore.setUser(res.data.user)
-          this.fetchMenu()
+          const res = await axios.post(`${this.apiUrl}/telegram-auth`, user, { withCredentials: true })
+          if (res.data.success) {
+            this.cartStore.setUser(res.data.user)
+            this.fetchMenu()
+            console.log('✅ Telegram login muvaffaqiyatli:', res.data.user)
+          }
         } catch (err) {
           console.error('❌ Telegram login xatosi:', err)
         }
@@ -198,9 +218,14 @@ export default {
     goToDetail(item) {
       this.$router.push({ name: 'ItemDetail', params: { id: item.id } })
     },
-    logout() {
-      this.cartStore.clearUser()
-      axios.post(`https://restoran-backend.onrender.com/api/logout`, {}, { withCredentials: true })
+    async logout() {
+      try {
+        await axios.post(`${this.apiUrl}/logout`, {}, { withCredentials: true })
+        this.cartStore.clearUser()
+        console.log('✅ Sessiya yopildi')
+      } catch (err) {
+        console.error('❌ Chiqishda xatolik:', err)
+      }
     },
   },
 }
